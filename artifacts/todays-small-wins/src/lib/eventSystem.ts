@@ -1,5 +1,7 @@
 export const DEBUG = true;
 
+export type AppMode = 'guest' | 'user';
+
 export type EventType = 'hydration' | 'mood' | 'sleep' | 'medication' | 'poop';
 
 export type Screen = 'log' | 'results' | 'progress' | 'calendar' | 'login';
@@ -13,11 +15,18 @@ export interface WellnessEvent {
   created_at: string;
 }
 
+/**
+ * Returns today's day key (YYYY-MM-DD) with a 3:00 AM reset rule.
+ * Times between 12:00 AM and 2:59 AM belong to the previous calendar day.
+ */
 export function getTodayKey(): string {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
+  const target = now.getHours() < 3
+    ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+    : now;
+  const y = target.getFullYear();
+  const m = String(target.getMonth() + 1).padStart(2, '0');
+  const d = String(target.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
@@ -35,8 +44,8 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
 
   const poopWins = todayEvents.filter(e => e.type === 'poop').length;
 
-  const sleepWins = todayEvents.filter(
-    e => e.type === 'sleep' && e.metadata?.completed === true
+  const sleepWins = events.filter(
+    e => e.type === 'sleep' && e.metadata?.stage === 'complete' && e.day_key === dayKey
   ).length;
 
   const total = hydrationWins + moodWins + medicationWins + poopWins + sleepWins;
