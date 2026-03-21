@@ -21,7 +21,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ```text
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+│   ├── api-server/         # Express API server
+│   └── todays-small-wins/  # Wellness tracker React app (frontend only, local state)
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
@@ -90,6 +91,18 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 ### `lib/api-client-react` (`@workspace/api-client-react`)
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
+
+### `artifacts/todays-small-wins` (`@workspace/todays-small-wins`)
+
+Mobile-first wellness tracker React (Vite + Tailwind) app. Frontend only — all state is local React state (no backend, no auth yet). Structured for future database integration.
+
+- Entry: `src/main.tsx` → `src/App.tsx`
+- State: All events and navigation state centralized in `App.tsx`
+- Event system: `src/lib/eventSystem.ts` — event type, win calculation, `getTodayKey()`, `createEvent()`, `DEBUG` flag
+- Components: `Header`, `BottomNav`, `LogScreen`, `WinAnimation`, `DebugPanel`
+- Pages: `LoginScreen` (UI only), `ResultsScreen`, `ProgressScreen`, `CalendarScreen` (placeholders)
+- Autumn warm palette defined in `src/index.css`
+- `DEBUG = true` — logs event creation and win recalculation to console; includes a toggleable debug panel
 
 ### `scripts` (`@workspace/scripts`)
 

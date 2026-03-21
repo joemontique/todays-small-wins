@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Today's Small Wins"
+version = "1.0.0"
+id = "artifacts/todays-small-wins"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24359
+
+[services.development]
+run = "pnpm --filter @workspace/todays-small-wins run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/todays-small-wins", "run", "build" ]
+publicDir = "artifacts/todays-small-wins/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24359"
+BASE_PATH = "/"

@@ -1,0 +1,108 @@
+import { useState, useMemo } from "react";
+import {
+  DEBUG,
+  createEvent,
+  calculateWins,
+  getTodayKey,
+  type WellnessEvent,
+  type EventType,
+  type Screen,
+} from "@/lib/eventSystem";
+import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
+import LogScreen from "@/components/LogScreen";
+import WinAnimation from "@/components/WinAnimation";
+import DebugPanel from "@/components/DebugPanel";
+import LoginScreen from "@/pages/LoginScreen";
+import ResultsScreen from "@/pages/ResultsScreen";
+import ProgressScreen from "@/pages/ProgressScreen";
+import CalendarScreen from "@/pages/CalendarScreen";
+
+export default function App() {
+  const [events, setEvents] = useState<WellnessEvent[]>([]);
+  const [currentScreen, setCurrentScreen] = useState<Screen>("log");
+  const [prevScreen, setPrevScreen] = useState<Screen>("log");
+  const [winAnim, setWinAnim] = useState<{ text: string } | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+
+  const dayKey = getTodayKey();
+
+  const wins = useMemo(() => calculateWins(events, dayKey), [events, dayKey]);
+
+  function logEvent(
+    type: EventType,
+    value: string | number,
+    metadata: Record<string, unknown> = {}
+  ) {
+    const prevWins = calculateWins(events, dayKey);
+    const newEvent = createEvent(type, value, metadata);
+    const newEvents = [...events, newEvent];
+    const newWins = calculateWins(newEvents, dayKey);
+
+    setEvents(newEvents);
+
+    const earnedWin = newWins > prevWins;
+    setWinAnim({ text: earnedWin ? "+1 Win" : "Nice job" });
+  }
+
+  function goToLogin() {
+    setPrevScreen(currentScreen);
+    setCurrentScreen("login");
+  }
+
+  function goBack() {
+    setCurrentScreen(prevScreen);
+  }
+
+  const isLogin = currentScreen === "login";
+
+  return (
+    <div
+      className="min-h-screen bg-background flex flex-col max-w-md mx-auto relative overflow-hidden"
+      data-testid="app-root"
+    >
+      <Header
+        wins={wins}
+        onLoginClick={goToLogin}
+        showLoginButton={!isLogin}
+      />
+
+      <main className="flex-1 overflow-y-auto pt-[72px] pb-[72px]">
+        {currentScreen === "login" && (
+          <LoginScreen onBack={goBack} />
+        )}
+        {currentScreen === "log" && (
+          <LogScreen events={events} dayKey={dayKey} logEvent={logEvent} />
+        )}
+        {currentScreen === "results" && <ResultsScreen />}
+        {currentScreen === "progress" && <ProgressScreen />}
+        {currentScreen === "calendar" && <CalendarScreen />}
+      </main>
+
+      {!isLogin && (
+        <BottomNav current={currentScreen} onChange={setCurrentScreen} />
+      )}
+
+      {winAnim && (
+        <WinAnimation
+          text={winAnim.text}
+          onDone={() => setWinAnim(null)}
+        />
+      )}
+
+      {DEBUG && (
+        <button
+          onClick={() => setShowDebug(v => !v)}
+          className="fixed bottom-20 right-3 z-50 bg-amber-700/80 text-amber-50 text-xs px-2 py-1 rounded-full shadow-md"
+          data-testid="button-toggle-debug"
+        >
+          {showDebug ? "Hide Debug" : "Debug"}
+        </button>
+      )}
+
+      {DEBUG && showDebug && (
+        <DebugPanel events={events} dayKey={dayKey} wins={wins} />
+      )}
+    </div>
+  );
+}
