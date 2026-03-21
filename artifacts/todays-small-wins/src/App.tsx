@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   DEBUG,
   createEvent,
@@ -18,11 +18,29 @@ import ResultsScreen from "@/pages/ResultsScreen";
 import ProgressScreen from "@/pages/ProgressScreen";
 import CalendarScreen from "@/pages/CalendarScreen";
 
+function getInitialTheme(): "light" | "dark" {
+  try {
+    const stored = localStorage.getItem("tsw-theme");
+    if (stored === "dark" || stored === "light") return stored;
+  } catch {}
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export default function App() {
   const [events, setEvents] = useState<WellnessEvent[]>([]);
   const [currentScreen, setCurrentScreen] = useState<Screen>("log");
   const [winAnim, setWinAnim] = useState<{ text: string } | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    try { localStorage.setItem("tsw-theme", theme); } catch {}
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme(t => t === "light" ? "dark" : "light");
+  }
 
   const dayKey = getTodayKey();
 
@@ -63,6 +81,8 @@ export default function App() {
         wins={wins}
         onLoginClick={goToLogin}
         showLoginButton={!isLogin}
+        theme={theme}
+        onThemeToggle={toggleTheme}
       />
 
       <main className="flex-1 overflow-y-auto pt-[72px] pb-[72px]">
