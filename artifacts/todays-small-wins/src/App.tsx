@@ -21,7 +21,6 @@ import CalendarScreen from "@/pages/CalendarScreen";
 export default function App() {
   const [events, setEvents] = useState<WellnessEvent[]>([]);
   const [currentScreen, setCurrentScreen] = useState<Screen>("log");
-  const [prevScreen, setPrevScreen] = useState<Screen>("log");
   const [winAnim, setWinAnim] = useState<{ text: string } | null>(null);
   const [showDebug, setShowDebug] = useState(false);
 
@@ -46,12 +45,11 @@ export default function App() {
   }
 
   function goToLogin() {
-    setPrevScreen(currentScreen);
     setCurrentScreen("login");
   }
 
   function goBack() {
-    setCurrentScreen(prevScreen);
+    setCurrentScreen("log");
   }
 
   const isLogin = currentScreen === "login";

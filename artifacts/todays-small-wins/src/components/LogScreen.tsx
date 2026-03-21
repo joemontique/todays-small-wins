@@ -107,7 +107,7 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
           label="Sleep"
           count={sleepToday}
           countLabel="logged"
-          onTap={() => logEvent("sleep", "logged", { completed: false, note: "quick log" })}
+          onTap={() => logEvent("sleep", "logged", { completed: true })}
           testId="button-sleep"
         />
 
