@@ -1,0 +1,117 @@
+
+⸻
+
+:::writing{variant=“standard” id=“91847”}
+Build a clean React (Vite) app using Tailwind CSS.
+
+This app is called “Today’s Small Wins” and is a mobile-first wellness tracker.
+
+IMPORTANT RULES:
+	•	Do NOT add any backend, database, or authentication logic yet
+	•	Everything should use local React state only
+	•	Structure the app so it is ready for future database integration
+	•	Keep code clean, modular, and easy to extend
+	•	Use functional components and hooks only
+
+LAYOUT:
+	•	Mobile-first design
+	•	Bottom tab navigation with 4 tabs:
+	1.	Log
+	2.	Results
+	3.	Progress
+	4.	Calendar
+	•	Top header:
+	•	Title: “Today’s Small Wins”
+	•	Subtitle: show today’s win count (e.g., “✨ 0 wins”)
+	•	Right side button: “Log In”
+
+LOG SCREEN (MAIN SCREEN):
+	•	Use a grid of large buttons (rounded cards)
+	•	Each button represents an action:
+	•	Hydration (+1, +2)
+	•	Mood (emoji picker: 🙂 😐 😔 😤 😌 😴)
+	•	Sleep
+	•	Medication
+	•	💩 (bathroom log)
+	•	Buttons should be visually grouped but still feel fast and tappable
+
+EVENT SYSTEM:
+	•	Create a central state array called events
+	•	Each event should have:
+	•	id
+	•	type (hydration, mood, sleep, medication, poop)
+	•	value
+	•	day_key (YYYY-MM-DD)
+	•	metadata (optional object)
+	•	created_at timestamp
+
+WIN SYSTEM:
+	•	Automatically calculate wins based on events:
+	•	Hydration: every 2 cups = 1 win
+	•	Mood: 1 win per entry (max 3/day)
+	•	Medication: 1 win per med taken
+	•	Sleep: 1 win when full sleep log completed
+	•	Poop: 1 win per log
+	•	Display win count in header
+	•	Update win count dynamically when events change
+
+ANIMATIONS:
+	•	When a user logs an action:
+	•	Show a subtle full-screen animation
+	•	Soft fade/scale effect
+	•	Display text like “+1 Win” or “Nice job”
+	•	Keep it smooth and quick (not flashy)
+
+MOOD INPUT:
+	•	Emoji-only selection
+	•	Store emoji in value
+	•	Also include metadata label internally (e.g., “happy”, “neutral”, etc.)
+
+HYDRATION INPUT:
+	•	Two buttons: +1 and +2
+	•	Immediately logs event
+
+SLEEP SYSTEM:
+	•	Prepare structure for:
+	•	“Went to bed” (night)
+	•	Next day inputs (sleep time, wake time, mood)
+	•	UI can be simple placeholder for now but structure should exist
+
+STYLE:
+	•	Autumn/fall inspired
+	•	Warm tones (oranges, browns, soft neutrals)
+	•	Clean spacing
+	•	Smooth rounded UI
+	•	Minimal but polished
+
+OTHER:
+	•	Create a basic “Log In” screen (UI only, no real auth)
+	•	Clicking “Log In” navigates to that screen
+	•	Include fields:
+	•	Name
+	•	Birthday
+	•	Sobriety date
+	•	Include buttons:
+	•	Log In
+	•	Create Account
+	•	No real functionality yet, just UI and navigation
+
+NAVIGATION:
+	•	Use simple state-based navigation (no heavy router needed yet)
+
+DEBUG SYSTEM:
+	•	Add a simple global DEBUG flag (set to true)
+	•	Log key actions to console:
+	•	When an event is created
+	•	When wins are recalculated
+	•	Create a hidden debug panel component:
+	•	Can be toggled with a temporary button or key
+	•	Displays:
+	•	Current events array
+	•	Current day_key
+	•	Current win count
+	•	Keep debug UI minimal and non-intrusive
+	•	Structure it so it can be turned off or restricted in the future
+
+GOAL:
+Produce a clean, working UI with local state that simulates the full app experience.
