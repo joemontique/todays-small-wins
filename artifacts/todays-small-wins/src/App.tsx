@@ -52,12 +52,13 @@ export default function App() {
   }
 
   const dayKey = getDayKey();
+  console.log("[TSW] current dayKey:", dayKey);
   useEffect(() => {
     async function fetchEvents() {
       const { data, error } = await supabase
         .from("events")
         .select("*")
-        .eq("day_key", dayKey)
+        // .eq("day_key", dayKey)
         .order("created_at", { ascending: true });
 
       if (error) {
