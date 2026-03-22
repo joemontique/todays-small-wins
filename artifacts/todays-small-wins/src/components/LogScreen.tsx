@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabaseClient";
 import { useState } from "react";
 import { getMedicationDayKey, type WellnessEvent, type EventType } from "@/lib/eventSystem";
 import { nowHHMM, isAfter7PM } from "@/lib/timeUtils";
