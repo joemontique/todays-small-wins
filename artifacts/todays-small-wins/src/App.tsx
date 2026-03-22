@@ -60,29 +60,28 @@ export default function App() {
     const newEvents = [...events, newEvent];
     const newWins = calculateWins(newEvents, dayKey);
 
-    // ✅ KEEP LOCAL STATE (UI still instant)
     setEvents(newEvents);
 
     const earnedWin = newWins > prevWins;
     setWinAnim({ text: earnedWin ? "+1 Win" : "Nice job" });
 
-    // 🔥 NEW: SAVE TO SUPABASE
     try {
-          const { data, error } = await supabase.from("events").insert([
-            {
-              type,
-              value: String(value),
-              day_key: dayKeyOverride || dayKey,
-              metadata,
-            }
-            ]);
+      const { error } = await supabase.from("events").insert([
+        {
+          type,
+          value: String(value),
+          day_key: dayKeyOverride || dayKey,
+          metadata,
+        }
+      ]);
+
       if (error) {
-        console.error("Supabase insert error:", error);
+        console.error("[TSW] Supabase insert error:", error);
       } else {
-        console.log("Saved to Supabase ✅");
+        console.log("[TSW] Event saved to Supabase");
       }
     } catch (err) {
-      console.error("Unexpected error:", err);
+      console.error("[TSW] Unexpected Supabase error:", err);
     }
   }
 
