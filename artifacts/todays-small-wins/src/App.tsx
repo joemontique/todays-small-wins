@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabaseClient";
 import { useState, useMemo, useEffect } from "react";
 import {
   DEBUG,
@@ -48,7 +49,7 @@ export default function App() {
 
   const wins = useMemo(() => calculateWins(events, dayKey), [events, dayKey]);
 
-  function logEvent(
+  async function logEvent(
     type: EventType,
     value: string | number,
     metadata: Record<string, unknown> = {},
@@ -59,10 +60,32 @@ export default function App() {
     const newEvents = [...events, newEvent];
     const newWins = calculateWins(newEvents, dayKey);
 
+    // ✅ KEEP LOCAL STATE (UI still instant)
     setEvents(newEvents);
 
     const earnedWin = newWins > prevWins;
     setWinAnim({ text: earnedWin ? "+1 Win" : "Nice job" });
+
+    // 🔥 NEW: SAVE TO SUPABASE
+    try {
+      const { error } = await supabase.from("events").insert([
+        {
+          user_id: null, // we’ll handle users later
+          type,
+          value: String(value),
+          day_key: dayKeyOverride || dayKey,
+          metadata,
+        },
+      ]);
+
+      if (error) {
+        console.error("Supabase insert error:", error);
+      } else {
+        console.log("Saved to Supabase ✅");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
   }
 
   function goToLogin() {
