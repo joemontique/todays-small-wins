@@ -156,8 +156,18 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
     setWakeMood("");
   }
 
-  function handleLogNap(hours: number) {
+  async function handleLogNap(hours: number) {
     logEvent("nap", hours, { duration_hours: hours });
+
+    await supabase.from("events").insert([
+      {
+        user_id: "demo-user",
+        type: "nap",
+        value: hours.toString(),
+        day_key: dayKey,
+        metadata: { duration_hours: hours },
+      },
+    ]);
   }
 
   function handleLogMedication(name: string, scheduledTime: string) {
