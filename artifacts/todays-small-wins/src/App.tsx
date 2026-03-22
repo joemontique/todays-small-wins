@@ -35,7 +35,13 @@ export default function App() {
   const [showDebug, setShowDebug] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
   const [mode] = useState<AppMode>("guest");
+  const [user, setUser] = useState<any>(null);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+  }, []);
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     try { localStorage.setItem("tsw-theme", theme); } catch {}
@@ -46,7 +52,23 @@ export default function App() {
   }
 
   const dayKey = getDayKey();
+  useEffect(() => {
+    async function fetchEvents() {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("day_key", dayKey)
+        .order("created_at", { ascending: true });
 
+      if (error) {
+        console.error("[TSW] Fetch error:", error);
+      } else {
+        setEvents(data || []);
+      }
+    }
+
+    fetchEvents();
+  }, [dayKey]);
   const wins = useMemo(() => calculateWins(events, dayKey), [events, dayKey]);
 
   async function logEvent(
@@ -68,6 +90,7 @@ export default function App() {
     try {
       const { error } = await supabase.from("events").insert([
         {
+          user_id: user?.id || null,
           type,
           value: String(value),
           day_key: dayKeyOverride || dayKey,
