@@ -82,7 +82,7 @@ function isSleepCompletedToday(events: WellnessEvent[], dayKey: string): boolean
 interface LogScreenProps {
   events: WellnessEvent[];
   dayKey: string;
-  logEvent: (type: EventType, value: string | number, metadata?: Record<string, unknown>) => void;
+  logEvent: (type: EventType, value: string | number, metadata?: Record<string, unknown>, dayKeyOverride?: string) => void;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -166,11 +166,12 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
   }
 
   function handleLogMedication(name: string, scheduledTime: string) {
+    // Medication events always use the midnight-based day key (independent of 3 AM wellness reset)
     logEvent("medication", 1, {
       name,
       scheduled_time: scheduledTime,
       source: "simulated",
-    });
+    }, getMedicationDayKey());
   }
 
   function handleLogBathroom() {

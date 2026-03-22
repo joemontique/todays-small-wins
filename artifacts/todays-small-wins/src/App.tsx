@@ -49,10 +49,11 @@ export default function App() {
   function logEvent(
     type: EventType,
     value: string | number,
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, unknown> = {},
+    dayKeyOverride?: string
   ) {
     const prevWins = calculateWins(events, dayKey);
-    const newEvent = createEvent(type, value, metadata);
+    const newEvent = createEvent(type, value, metadata, dayKeyOverride);
     const newEvents = [...events, newEvent];
     const newWins = calculateWins(newEvents, dayKey);
 

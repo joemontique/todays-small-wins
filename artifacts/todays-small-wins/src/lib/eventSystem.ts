@@ -53,7 +53,11 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
 
   const moodWins = Math.min(3, todayEvents.filter(e => e.type === 'mood').length);
 
-  const medicationWins = todayEvents.filter(e => e.type === 'medication').length;
+  // Medication uses its own midnight-based day key — must be counted independently
+  const medDayKey = getMedicationDayKey();
+  const medicationWins = events.filter(
+    e => e.type === 'medication' && e.day_key === medDayKey
+  ).length;
 
   // Only 💩 events count as wins; 💧 (pee) and ❌ (no activity) do not
   const bathroomWins = todayEvents.filter(
@@ -69,6 +73,7 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
   if (DEBUG) {
     console.log('[TSW] Wins recalculated:', {
       dayKey,
+      medDayKey,
       hydrationCups,
       hydrationWins,
       moodWins,
@@ -85,13 +90,14 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
 export function createEvent(
   type: EventType,
   value: string | number,
-  metadata: Record<string, unknown> = {}
+  metadata: Record<string, unknown> = {},
+  dayKeyOverride?: string
 ): WellnessEvent {
   const event: WellnessEvent = {
     id: crypto.randomUUID(),
     type,
     value,
-    day_key: getTodayKey(),
+    day_key: dayKeyOverride ?? getTodayKey(),
     metadata,
     created_at: new Date().toISOString(),
   };
