@@ -1,0 +1,185 @@
+Perform a final structural refinement of the existing app. Do NOT rebuild the app. Do NOT change the overall design, theme, header, or navigation. Preserve the current UI and autumn styling.
+
+This is a final structure lock before future database integration. Focus on correctness, consistency, and system behavior.
+
+----------------------
+CORE SYSTEM RULES
+----------------------
+
+- Maintain a central events array:
+  { id, type, value, day_key, metadata, created_at }
+
+- day_key must follow a 3:00 AM reset rule:
+  - The day resets at 3:00 AM
+  - Events between 12:00 AM–2:59 AM belong to the previous day
+
+- Medication reset is separate:
+  - Medications reset daily at midnight (not 3 AM)
+
+- Store all detailed data in metadata (do not flatten structured inputs)
+
+- Maintain a mode system:
+  - "guest" (current state, local only)
+  - "user" (future database mode)
+
+----------------------
+LIMIT RULES
+----------------------
+
+- Mood: maximum 3 entries per day
+- Wins are always calculated automatically (never manually entered)
+
+----------------------
+LOG SCREEN STRUCTURE
+----------------------
+
+1. ORDER
+- Do NOT place Hydration first
+- Reorder the grid so higher-priority inputs (sleep, mood) appear first
+
+----------------------
+
+2. HYDRATION
+- Keep +1 and +2 buttons
+- Logging is immediate
+- Track total cups per day
+- Wins:
+  - Every 2 cups = 1 win (based on cumulative daily total)
+
+----------------------
+
+3. MOOD
+- Emoji-only input
+- Max 3 entries per day
+- Store:
+  - value = emoji
+  - metadata.label (e.g., "happy", "neutral", etc.)
+
+----------------------
+
+4. SLEEP (CRITICAL — MUST FOLLOW THIS STRUCTURE)
+
+Sleep is a two-stage system and must NOT be a single button.
+
+Stage 1 (after 7 PM):
+- Log “Went to bed” time
+
+Stage 2 (next day until 7 PM):
+- Complete sleep log with:
+  - time fell asleep
+  - time woke up
+  - wake mood (emoji)
+
+Rules:
+- Sleep belongs to the day the user wakes up
+- Use metadata to store all sleep details
+- Only award a win when the sleep log is fully completed
+
+----------------------
+
+5. NAP SYSTEM (NEW)
+
+- Add a “Nap” option
+- Fast input using preset buttons:
+  - 0.5 hr
+  - 1 hr
+  - 1.5 hr
+  - 2 hr
+  - 3 hr
+- Allow multiple naps per day
+- Store duration in metadata
+- Naps contribute to sleep tracking but do NOT require complex flow
+
+----------------------
+
+6. MEDICATION SYSTEM
+
+- Prepare structure for user-based medications (future database)
+
+- Simulate a list of medications:
+  - name
+  - scheduled time
+
+Behavior:
+- Display medication buttons from this list
+- When a medication is logged:
+  - mark it as taken
+  - hide/remove it for the rest of the day
+
+- At midnight:
+  - reset all medications so they reappear
+
+- Store medication logs as events
+
+----------------------
+
+7. BATHROOM (💩 SYSTEM)
+
+- Use emoji-based logging:
+  - 💩 = poop (valid log, counts as a win)
+  - 💧 = pee (log but NO win)
+  - ❌ = no activity (optional log, NO win)
+
+- Keep:
+  - duration input
+  - optional notes
+
+- Store emoji as event value
+- Only 💩 contributes to wins
+
+----------------------
+
+WIN SYSTEM
+
+- Wins must be calculated from meaningful completed actions:
+
+  - Hydration: every 2 cups = 1 win
+  - Mood: 1 win per entry (max 3/day)
+  - Medication: 1 win per medication taken
+  - Sleep: 1 win when full sleep log is completed
+  - Bathroom: only 💩 counts as a win
+
+- Win count must update dynamically
+
+----------------------
+
+INTERACTION RULES
+
+- Keep interactions fast and simple
+- Avoid unnecessary multi-step flows
+- Only sleep should have a multi-stage process
+
+----------------------
+
+DEBUG SYSTEM
+
+- Keep DEBUG flag enabled
+- Maintain console logs for:
+  - event creation
+  - win recalculation
+
+- Maintain debug panel showing:
+  - events array
+  - current day_key
+  - win count
+
+----------------------
+
+DO NOT CHANGE
+
+- Header (title + win count + login button)
+- Bottom tab navigation
+- Overall layout and styling
+- Animation system
+
+----------------------
+
+GOAL
+
+This is the final structural version of V1.
+
+The result should:
+- fully match the intended product behavior
+- correctly handle all logging flows
+- enforce all rules and limits
+- be clean, consistent, and ready for database integration without requiring rewrites
