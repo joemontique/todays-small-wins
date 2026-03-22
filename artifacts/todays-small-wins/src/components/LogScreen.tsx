@@ -10,6 +10,7 @@ const MOOD_OPTIONS = [
   { emoji: "😤", label: "frustrated" },
   { emoji: "😌", label: "calm" },
   { emoji: "😴", label: "tired" },
+  { emoji: "😰", label: "anxious" },
 ];
 
 const WAKE_MOOD_OPTIONS = [
@@ -18,6 +19,7 @@ const WAKE_MOOD_OPTIONS = [
   { emoji: "😐", label: "okay" },
   { emoji: "😔", label: "groggy" },
   { emoji: "😤", label: "rough" },
+  { emoji: "😰", label: "anxious" },
 ];
 
 const NAP_PRESETS = [
@@ -175,11 +177,10 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
   }
 
   function handleLogBathroom() {
-    if (!bathroomType) return;
-    if (bathroomType !== "❌" && !duration) return;
+    if (!bathroomType || !duration) return;
     logEvent("poop", bathroomType, {
       bathroom_type: bathroomType,
-      duration: bathroomType !== "❌" ? duration : null,
+      duration,
       notes: bathroomNotes.trim() || null,
     });
     setBathroomType("");
@@ -195,9 +196,7 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
     day: "numeric",
   });
 
-  const bathroomLogEnabled = bathroomType === "❌"
-    ? true
-    : bathroomType !== "" && duration !== "";
+  const bathroomLogEnabled = bathroomType !== "" && duration !== "";
 
   return (
     <div className="p-4 space-y-3" data-testid="log-screen">
@@ -542,8 +541,8 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
               </div>
             </div>
 
-            {/* Step 2: Duration (only for 💩 and 💧) */}
-            {bathroomType && bathroomType !== "❌" && (
+            {/* Step 2: Duration */}
+            {bathroomType && (
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Duration</label>
                 <div className="grid grid-cols-3 gap-2">
