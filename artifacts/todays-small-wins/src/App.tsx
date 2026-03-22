@@ -68,15 +68,14 @@ export default function App() {
 
     // 🔥 NEW: SAVE TO SUPABASE
     try {
-      const { error } = await supabase.from("events").insert([
-        {
-          type,
-          value: String(value),
-          day_key: dayKeyOverride || dayKey,
-          metadata,
-        },
-      ]);
-
+          const { data, error } = await supabase.from("events").insert([
+            {
+              type,
+              value: String(value),
+              day_key: dayKeyOverride || dayKey,
+              metadata,
+            }
+            ]);
       if (error) {
         console.error("Supabase insert error:", error);
       } else {
