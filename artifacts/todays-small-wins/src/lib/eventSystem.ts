@@ -1,3 +1,7 @@
+import { getDayKey, getMedicationDayKey } from './timeUtils';
+
+export { getDayKey, getMedicationDayKey } from './timeUtils';
+
 export const DEBUG = true;
 
 export type AppMode = 'guest' | 'user';
@@ -16,33 +20,9 @@ export interface WellnessEvent {
 }
 
 /**
- * Returns today's day key (YYYY-MM-DD) with a 3:00 AM reset rule.
- * Times between 12:00 AM and 2:59 AM belong to the previous calendar day.
- * Used for all event types except medication.
+ * Calculates today's win total from the event log.
+ * Each category uses its own day-key rule (see timeUtils).
  */
-export function getTodayKey(): string {
-  const now = new Date();
-  const target = now.getHours() < 3
-    ? new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-    : now;
-  const y = target.getFullYear();
-  const m = String(target.getMonth() + 1).padStart(2, '0');
-  const d = String(target.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-/**
- * Returns the current calendar day key (YYYY-MM-DD) using standard midnight reset.
- * Used exclusively for medication tracking — resets at midnight, not 3 AM.
- */
-export function getMedicationDayKey(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 export function calculateWins(events: WellnessEvent[], dayKey: string): number {
   const todayEvents = events.filter(e => e.day_key === dayKey);
 
@@ -53,13 +33,13 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
 
   const moodWins = Math.min(3, todayEvents.filter(e => e.type === 'mood').length);
 
-  // Medication uses its own midnight-based day key — must be counted independently
+  // Medication uses midnight-based day key — independent of the 3 AM wellness reset
   const medDayKey = getMedicationDayKey();
   const medicationWins = events.filter(
     e => e.type === 'medication' && e.day_key === medDayKey
   ).length;
 
-  // Only 💩 events count as wins; 💧 (pee) and ❌ (no activity) do not
+  // Only 💩 counts as a win; 💧 (pee) and ❌ (no activity) do not
   const bathroomWins = todayEvents.filter(
     e => e.type === 'poop' && e.value === '💩'
   ).length;
@@ -87,6 +67,10 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
   return total;
 }
 
+/**
+ * Single entry point for all event creation. Never construct event objects directly.
+ * Pass dayKeyOverride only when a category uses a different reset rule (e.g. medication).
+ */
 export function createEvent(
   type: EventType,
   value: string | number,
@@ -97,7 +81,7 @@ export function createEvent(
     id: crypto.randomUUID(),
     type,
     value,
-    day_key: dayKeyOverride ?? getTodayKey(),
+    day_key: dayKeyOverride ?? getDayKey(),
     metadata,
     created_at: new Date().toISOString(),
   };

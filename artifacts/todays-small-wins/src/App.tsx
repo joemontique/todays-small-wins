@@ -3,7 +3,8 @@ import {
   DEBUG,
   createEvent,
   calculateWins,
-  getTodayKey,
+  getDayKey,
+  type AppMode,
   type WellnessEvent,
   type EventType,
   type Screen,
@@ -32,6 +33,7 @@ export default function App() {
   const [winAnim, setWinAnim] = useState<{ text: string } | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
+  const [mode] = useState<AppMode>("guest");
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -42,7 +44,7 @@ export default function App() {
     setTheme(t => t === "light" ? "dark" : "light");
   }
 
-  const dayKey = getTodayKey();
+  const dayKey = getDayKey();
 
   const wins = useMemo(() => calculateWins(events, dayKey), [events, dayKey]);
 
@@ -120,7 +122,7 @@ export default function App() {
       )}
 
       {DEBUG && showDebug && (
-        <DebugPanel events={events} dayKey={dayKey} wins={wins} />
+        <DebugPanel events={events} dayKey={dayKey} wins={wins} mode={mode} />
       )}
     </div>
   );

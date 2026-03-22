@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getMedicationDayKey, type WellnessEvent, type EventType } from "@/lib/eventSystem";
+import { nowHHMM, isAfter7PM } from "@/lib/timeUtils";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -51,15 +52,6 @@ const DEMO_MEDICATIONS = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function nowTimeString(): string {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-}
-
-function isAfter7PM(): boolean {
-  return new Date().getHours() >= 19;
-}
-
 function getOpenBedtimeEvent(events: WellnessEvent[]): WellnessEvent | null {
   const completedIds = new Set(
     events
@@ -95,7 +87,7 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
 
   // Sleep
   const [sleepOpen, setSleepOpen] = useState(false);
-  const [bedtimeTime, setBedtimeTime] = useState(nowTimeString);
+  const [bedtimeTime, setBedtimeTime] = useState(nowHHMM);
   const [fellAsleepTime, setFellAsleepTime] = useState("");
   const [wokeUpTime, setWokeUpTime] = useState("");
   const [wakeMood, setWakeMood] = useState("");
@@ -143,7 +135,7 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
       bedtime_time: bedtimeTime,
     });
     setSleepOpen(false);
-    setBedtimeTime(nowTimeString());
+    setBedtimeTime(nowHHMM());
   }
 
   function handleCompleteSleep() {
@@ -388,14 +380,14 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => logEvent("hydration", 1)}
+            onClick={() => logEvent("hydration", 1, { cups: 1 })}
             className="flex-1 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary font-semibold rounded-xl py-3 text-sm transition-all active:scale-95"
             data-testid="button-hydration-1"
           >
             +1 Cup
           </button>
           <button
-            onClick={() => logEvent("hydration", 2)}
+            onClick={() => logEvent("hydration", 2, { cups: 2 })}
             className="flex-1 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary font-semibold rounded-xl py-3 text-sm transition-all active:scale-95"
             data-testid="button-hydration-2"
           >
