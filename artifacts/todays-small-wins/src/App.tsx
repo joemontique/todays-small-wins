@@ -70,7 +70,6 @@ export default function App() {
     try {
       const { error } = await supabase.from("events").insert([
         {
-          user_id: null, // we’ll handle users later
           type,
           value: String(value),
           day_key: dayKeyOverride || dayKey,
