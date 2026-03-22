@@ -2,7 +2,7 @@ export const DEBUG = true;
 
 export type AppMode = 'guest' | 'user';
 
-export type EventType = 'hydration' | 'mood' | 'sleep' | 'medication' | 'poop';
+export type EventType = 'hydration' | 'mood' | 'sleep' | 'nap' | 'medication' | 'poop';
 
 export type Screen = 'log' | 'results' | 'progress' | 'calendar' | 'login';
 
@@ -18,6 +18,7 @@ export interface WellnessEvent {
 /**
  * Returns today's day key (YYYY-MM-DD) with a 3:00 AM reset rule.
  * Times between 12:00 AM and 2:59 AM belong to the previous calendar day.
+ * Used for all event types except medication.
  */
 export function getTodayKey(): string {
   const now = new Date();
@@ -27,6 +28,18 @@ export function getTodayKey(): string {
   const y = target.getFullYear();
   const m = String(target.getMonth() + 1).padStart(2, '0');
   const d = String(target.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Returns the current calendar day key (YYYY-MM-DD) using standard midnight reset.
+ * Used exclusively for medication tracking — resets at midnight, not 3 AM.
+ */
+export function getMedicationDayKey(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
@@ -42,13 +55,16 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
 
   const medicationWins = todayEvents.filter(e => e.type === 'medication').length;
 
-  const poopWins = todayEvents.filter(e => e.type === 'poop').length;
+  // Only 💩 events count as wins; 💧 (pee) and ❌ (no activity) do not
+  const bathroomWins = todayEvents.filter(
+    e => e.type === 'poop' && e.value === '💩'
+  ).length;
 
   const sleepWins = events.filter(
     e => e.type === 'sleep' && e.metadata?.stage === 'complete' && e.day_key === dayKey
   ).length;
 
-  const total = hydrationWins + moodWins + medicationWins + poopWins + sleepWins;
+  const total = hydrationWins + moodWins + medicationWins + bathroomWins + sleepWins;
 
   if (DEBUG) {
     console.log('[TSW] Wins recalculated:', {
@@ -57,7 +73,7 @@ export function calculateWins(events: WellnessEvent[], dayKey: string): number {
       hydrationWins,
       moodWins,
       medicationWins,
-      poopWins,
+      bathroomWins,
       sleepWins,
       total,
     });

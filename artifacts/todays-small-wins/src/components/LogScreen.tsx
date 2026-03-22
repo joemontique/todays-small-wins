@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { type WellnessEvent, type EventType } from "@/lib/eventSystem";
+import { getMedicationDayKey, type WellnessEvent, type EventType } from "@/lib/eventSystem";
 
-// ─── Constants ──────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const MOOD_OPTIONS = [
   { emoji: "🙂", label: "happy" },
@@ -20,10 +20,31 @@ const WAKE_MOOD_OPTIONS = [
   { emoji: "😤", label: "rough" },
 ];
 
+const NAP_PRESETS = [
+  { label: "30m", hours: 0.5 },
+  { label: "1 hr", hours: 1 },
+  { label: "1.5 hr", hours: 1.5 },
+  { label: "2 hr", hours: 2 },
+  { label: "3 hr", hours: 3 },
+];
+
 const DURATION_OPTIONS = [
   { value: "quick", label: "Quick", sub: "< 5 min" },
   { value: "normal", label: "Normal", sub: "5–15 min" },
   { value: "long", label: "Long", sub: "15+ min" },
+];
+
+const BATHROOM_TYPES = [
+  { value: "💩", label: "Poop", wins: true },
+  { value: "💧", label: "Pee", wins: false },
+  { value: "❌", label: "Nothing", wins: false },
+];
+
+// Simulated medication list — future: synced from user profile
+const DEMO_MEDICATIONS = [
+  { name: "Vitamin D", scheduled_time: "08:00" },
+  { name: "Omega-3", scheduled_time: "08:00" },
+  { name: "Magnesium", scheduled_time: "21:00" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -77,12 +98,9 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
   const [wokeUpTime, setWokeUpTime] = useState("");
   const [wakeMood, setWakeMood] = useState("");
 
-  // Medication
-  const [medOpen, setMedOpen] = useState(false);
-  const [medName, setMedName] = useState("");
-
   // Bathroom
   const [bathroomOpen, setBathroomOpen] = useState(false);
+  const [bathroomType, setBathroomType] = useState("");
   const [duration, setDuration] = useState("");
   const [bathroomNotes, setBathroomNotes] = useState("");
 
@@ -93,11 +111,21 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
     .reduce((sum, e) => sum + Number(e.value), 0);
   const moodToday = todayEvents.filter(e => e.type === "mood").length;
   const moodAtMax = moodToday >= 3;
-  const medToday = todayEvents.filter(e => e.type === "medication").length;
-  const poopToday = todayEvents.filter(e => e.type === "poop").length;
+  const napsToday = todayEvents.filter(e => e.type === "nap").length;
+  const bathroomToday = todayEvents.filter(e => e.type === "poop").length;
   const openBedtime = getOpenBedtimeEvent(events);
   const sleepDoneToday = isSleepCompletedToday(events, dayKey);
   const after7PM = isAfter7PM();
+
+  // Medication uses midnight-based day key (independent of 3 AM reset)
+  const medDayKey = getMedicationDayKey();
+  const takenMedNames = new Set(
+    events
+      .filter(e => e.type === "medication" && e.day_key === medDayKey)
+      .map(e => e.metadata?.name as string)
+  );
+  const availableMeds = DEMO_MEDICATIONS.filter(m => !takenMedNames.has(m.name));
+  const takenMeds = DEMO_MEDICATIONS.filter(m => takenMedNames.has(m.name));
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -133,19 +161,27 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
     setWakeMood("");
   }
 
-  function handleLogMedication() {
-    const name = medName.trim() || "Medication";
-    logEvent("medication", 1, { name, source: "manual" });
-    setMedName("");
-    setMedOpen(false);
+  function handleLogNap(hours: number) {
+    logEvent("nap", hours, { duration_hours: hours });
+  }
+
+  function handleLogMedication(name: string, scheduledTime: string) {
+    logEvent("medication", 1, {
+      name,
+      scheduled_time: scheduledTime,
+      source: "simulated",
+    });
   }
 
   function handleLogBathroom() {
-    if (!duration) return;
-    logEvent("poop", 1, {
-      duration,
+    if (!bathroomType) return;
+    if (bathroomType !== "❌" && !duration) return;
+    logEvent("poop", bathroomType, {
+      bathroom_type: bathroomType,
+      duration: bathroomType !== "❌" ? duration : null,
       notes: bathroomNotes.trim() || null,
     });
+    setBathroomType("");
     setDuration("");
     setBathroomNotes("");
     setBathroomOpen(false);
@@ -158,83 +194,16 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
     day: "numeric",
   });
 
+  const bathroomLogEnabled = bathroomType === "❌"
+    ? true
+    : bathroomType !== "" && duration !== "";
+
   return (
     <div className="p-4 space-y-3" data-testid="log-screen">
       <p className="text-sm text-muted-foreground text-center font-medium">{dateLabel}</p>
 
-      {/* ── HYDRATION ─────────────────────────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-2xl">💧</span>
-          <div>
-            <p className="font-semibold text-foreground text-sm">Hydration</p>
-            <p className="text-xs text-muted-foreground">{hydrationCups} cups today</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => logEvent("hydration", 1)}
-            className="flex-1 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary font-semibold rounded-xl py-3 text-sm transition-all active:scale-95"
-            data-testid="button-hydration-1"
-          >
-            +1 Cup
-          </button>
-          <button
-            onClick={() => logEvent("hydration", 2)}
-            className="flex-1 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary font-semibold rounded-xl py-3 text-sm transition-all active:scale-95"
-            data-testid="button-hydration-2"
-          >
-            +2 Cups
-          </button>
-        </div>
-      </div>
-
-      {/* ── MOOD ──────────────────────────────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌡️</span>
-            <div>
-              <p className="font-semibold text-foreground text-sm">Mood</p>
-              <p className="text-xs text-muted-foreground">
-                {moodAtMax ? "3 / 3 logged today" : `${moodToday} / 3 today`}
-              </p>
-            </div>
-          </div>
-          {!moodAtMax && (
-            <button
-              onClick={() => setMoodOpen(v => !v)}
-              className="bg-primary text-primary-foreground text-xs font-medium rounded-full px-3 py-1.5 active:scale-95 transition-all"
-              data-testid="button-mood-toggle"
-            >
-              {moodOpen ? "Cancel" : "Log Mood"}
-            </button>
-          )}
-          {moodAtMax && (
-            <span className="text-xs text-muted-foreground font-medium px-2 py-1 bg-muted rounded-full">
-              Max reached
-            </span>
-          )}
-        </div>
-        {moodOpen && !moodAtMax && (
-          <div className="grid grid-cols-5 gap-2 mt-3">
-            {MOOD_OPTIONS.map(({ emoji, label }) => (
-              <button
-                key={emoji}
-                onClick={() => handleMoodSelect(emoji, label)}
-                className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-accent/20 active:scale-90 transition-all"
-                data-testid={`button-mood-${label}`}
-              >
-                <span className="text-2xl">{emoji}</span>
-                <span className="text-[10px] text-muted-foreground capitalize">{label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── SLEEP ─────────────────────────────────────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+      {/* ── SLEEP (primary card — slightly emphasized) ─────────────────────── */}
+      <div className="bg-card border-2 border-primary/20 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">😴</span>
@@ -364,85 +333,175 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
         )}
       </div>
 
-      {/* ── MEDICATION ────────────────────────────────────────────────────── */}
+      {/* ── MOOD ──────────────────────────────────────────────────────────── */}
       <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">💊</span>
+            <span className="text-2xl">🌡️</span>
             <div>
-              <p className="font-semibold text-foreground text-sm">Medication</p>
+              <p className="font-semibold text-foreground text-sm">Mood</p>
               <p className="text-xs text-muted-foreground">
-                {medToday > 0 ? `${medToday} logged today` : "None logged today"}
+                {moodAtMax ? "3 / 3 logged today" : `${moodToday} / 3 today`}
               </p>
             </div>
           </div>
+          {!moodAtMax && (
+            <button
+              onClick={() => setMoodOpen(v => !v)}
+              className="bg-primary text-primary-foreground text-xs font-medium rounded-full px-3 py-1.5 active:scale-95 transition-all"
+              data-testid="button-mood-toggle"
+            >
+              {moodOpen ? "Cancel" : "Log Mood"}
+            </button>
+          )}
+          {moodAtMax && (
+            <span className="text-xs text-muted-foreground font-medium px-2 py-1 bg-muted rounded-full">
+              Max reached
+            </span>
+          )}
+        </div>
+        {moodOpen && !moodAtMax && (
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {MOOD_OPTIONS.map(({ emoji, label }) => (
+              <button
+                key={emoji}
+                onClick={() => handleMoodSelect(emoji, label)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-accent/20 active:scale-90 transition-all"
+                data-testid={`button-mood-${label}`}
+              >
+                <span className="text-2xl">{emoji}</span>
+                <span className="text-xs text-muted-foreground capitalize">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── HYDRATION ─────────────────────────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-2xl">💧</span>
+          <div>
+            <p className="font-semibold text-foreground text-sm">Hydration</p>
+            <p className="text-xs text-muted-foreground">{hydrationCups} cups today</p>
+          </div>
+        </div>
+        <div className="flex gap-3">
           <button
-            onClick={() => setMedOpen(v => !v)}
-            className="bg-primary text-primary-foreground text-xs font-medium rounded-full px-3 py-1.5 active:scale-95 transition-all"
-            data-testid="button-medication-toggle"
+            onClick={() => logEvent("hydration", 1)}
+            className="flex-1 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary font-semibold rounded-xl py-3 text-sm transition-all active:scale-95"
+            data-testid="button-hydration-1"
           >
-            {medOpen ? "Cancel" : "Log Med"}
+            +1 Cup
+          </button>
+          <button
+            onClick={() => logEvent("hydration", 2)}
+            className="flex-1 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary font-semibold rounded-xl py-3 text-sm transition-all active:scale-95"
+            data-testid="button-hydration-2"
+          >
+            +2 Cups
           </button>
         </div>
+      </div>
 
-        {medOpen && (
-          <div className="mt-3 space-y-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Medication name
-              </label>
-              <input
-                type="text"
-                value={medName}
-                onChange={e => setMedName(e.target.value)}
-                placeholder="e.g. Ibuprofen"
-                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                data-testid="input-medication-name"
-              />
-              <p className="text-[10px] text-muted-foreground/60 px-1">
-                Future: synced from your profile
-              </p>
-            </div>
+      {/* ── NAP ───────────────────────────────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-2xl">🛋️</span>
+          <div>
+            <p className="font-semibold text-foreground text-sm">Nap</p>
+            <p className="text-xs text-muted-foreground">
+              {napsToday > 0 ? `${napsToday} nap${napsToday > 1 ? "s" : ""} today` : "None today"}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {NAP_PRESETS.map(({ label, hours }) => (
             <button
-              onClick={handleLogMedication}
-              className="w-full bg-primary text-primary-foreground font-medium rounded-xl py-2.5 text-sm active:scale-95 transition-all"
-              data-testid="button-log-medication"
+              key={hours}
+              onClick={() => handleLogNap(hours)}
+              className="flex-1 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 text-primary font-semibold rounded-xl py-2.5 text-xs transition-all active:scale-95"
+              data-testid={`button-nap-${hours}`}
             >
-              Log Medication
+              {label}
             </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── MEDICATION ────────────────────────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-2xl">💊</span>
+          <div>
+            <p className="font-semibold text-foreground text-sm">Medication</p>
+            <p className="text-xs text-muted-foreground">
+              {takenMedNames.size > 0
+                ? `${takenMedNames.size} of ${DEMO_MEDICATIONS.length} taken`
+                : "None taken today"}
+            </p>
+          </div>
+        </div>
+
+        {availableMeds.length > 0 ? (
+          <div className="space-y-2">
+            {availableMeds.map(med => (
+              <button
+                key={med.name}
+                onClick={() => handleLogMedication(med.name, med.scheduled_time)}
+                className="w-full flex items-center justify-between px-3 py-2.5 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 rounded-xl transition-all active:scale-95 text-left"
+                data-testid={`button-med-${med.name.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <span className="text-sm font-medium text-primary">{med.name}</span>
+                <span className="text-xs text-muted-foreground">{med.scheduled_time}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-1">
+            All medications taken ✓
+          </p>
+        )}
+
+        {takenMeds.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {takenMeds.map(med => (
+              <span
+                key={med.name}
+                className="text-[11px] bg-muted text-muted-foreground line-through rounded-full px-2 py-0.5"
+              >
+                {med.name}
+              </span>
+            ))}
           </div>
         )}
 
-        {medToday > 0 && !medOpen && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {events
-              .filter(e => e.type === "medication" && e.day_key === dayKey)
-              .map(e => (
-                <span
-                  key={e.id}
-                  className="text-[11px] bg-primary/10 text-primary font-medium rounded-full px-2 py-0.5"
-                >
-                  {e.metadata?.name as string}
-                </span>
-              ))}
-          </div>
-        )}
+        <p className="text-[10px] text-muted-foreground/50 mt-2">
+          Future: synced from your profile · Resets at midnight
+        </p>
       </div>
 
       {/* ── BATHROOM ──────────────────────────────────────────────────────── */}
       <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">💩</span>
+            <span className="text-2xl">🚽</span>
             <div>
               <p className="font-semibold text-foreground text-sm">Bathroom</p>
               <p className="text-xs text-muted-foreground">
-                {poopToday > 0 ? `${poopToday} logged today` : "None logged today"}
+                {bathroomToday > 0 ? `${bathroomToday} logged today` : "None logged today"}
               </p>
             </div>
           </div>
           <button
-            onClick={() => setBathroomOpen(v => !v)}
+            onClick={() => {
+              setBathroomOpen(v => !v);
+              if (bathroomOpen) {
+                setBathroomType("");
+                setDuration("");
+                setBathroomNotes("");
+              }
+            }}
             className="bg-primary text-primary-foreground text-xs font-medium rounded-full px-3 py-1.5 active:scale-95 transition-all"
             data-testid="button-bathroom-toggle"
           >
@@ -452,42 +511,80 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
 
         {bathroomOpen && (
           <div className="mt-3 space-y-3">
+            {/* Step 1: Type */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Duration</label>
+              <label className="text-xs font-medium text-muted-foreground">What happened?</label>
               <div className="grid grid-cols-3 gap-2">
-                {DURATION_OPTIONS.map(({ value, label, sub }) => (
+                {BATHROOM_TYPES.map(({ value, label, wins }) => (
                   <button
                     key={value}
-                    onClick={() => setDuration(value)}
-                    className={`flex flex-col items-center gap-0.5 py-2 rounded-xl transition-all active:scale-90 ${
-                      duration === value
+                    onClick={() => {
+                      setBathroomType(value);
+                      if (value === "❌") setDuration("");
+                    }}
+                    className={`flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all active:scale-90 ${
+                      bathroomType === value
                         ? "bg-primary/20 ring-1 ring-primary"
                         : "bg-muted/40 hover:bg-accent/20"
                     }`}
-                    data-testid={`button-duration-${value}`}
+                    data-testid={`button-bathroom-type-${label.toLowerCase()}`}
                   >
-                    <span className="text-sm font-semibold text-foreground">{label}</span>
-                    <span className="text-[10px] text-muted-foreground">{sub}</span>
+                    <span className="text-2xl">{value}</span>
+                    <span className="text-[10px] text-muted-foreground">{label}</span>
+                    {wins && (
+                      <span className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold">
+                        +win
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Notes <span className="text-muted-foreground/50">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={bathroomNotes}
-                onChange={e => setBathroomNotes(e.target.value)}
-                placeholder="Any notes..."
-                className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                data-testid="input-bathroom-notes"
-              />
-            </div>
+
+            {/* Step 2: Duration (only for 💩 and 💧) */}
+            {bathroomType && bathroomType !== "❌" && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Duration</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {DURATION_OPTIONS.map(({ value, label, sub }) => (
+                    <button
+                      key={value}
+                      onClick={() => setDuration(value)}
+                      className={`flex flex-col items-center gap-0.5 py-2 rounded-xl transition-all active:scale-90 ${
+                        duration === value
+                          ? "bg-primary/20 ring-1 ring-primary"
+                          : "bg-muted/40 hover:bg-accent/20"
+                      }`}
+                      data-testid={`button-duration-${value}`}
+                    >
+                      <span className="text-sm font-semibold text-foreground">{label}</span>
+                      <span className="text-[10px] text-muted-foreground">{sub}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Notes */}
+            {bathroomType && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Notes <span className="text-muted-foreground/50">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={bathroomNotes}
+                  onChange={e => setBathroomNotes(e.target.value)}
+                  placeholder="Any notes..."
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  data-testid="input-bathroom-notes"
+                />
+              </div>
+            )}
+
             <button
               onClick={handleLogBathroom}
-              disabled={!duration}
+              disabled={!bathroomLogEnabled}
               className="w-full bg-primary text-primary-foreground font-medium rounded-xl py-2.5 text-sm active:scale-95 transition-all disabled:opacity-40"
               data-testid="button-log-bathroom"
             >
