@@ -42,11 +42,6 @@ export default function App() {
       setUser(data.user);
     });
   }, []);
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-    });
-  }, []);
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -152,7 +147,7 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto pt-[72px] pb-[72px]">
         {currentScreen === "login" && (
-      <LoginScreen onBack={goBack} setUser={setUser} />
+          <LoginScreen onBack={goBack} setUser={setUser} />
         )}
         {currentScreen === "log" && (
           <LogScreen events={events} dayKey={dayKey} logEvent={logEvent} />
