@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { useState } from "react";
+import { type User } from "@supabase/supabase-js";
 import { ArrowLeft } from "lucide-react";
 
 interface LoginScreenProps {
@@ -18,7 +19,7 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
   const [birthday, setBirthday] = useState("");
   const [sobrietyDate, setSobrietyDate] = useState("");
 
-  const [signedUpUser, setSignedUpUser] = useState<any>(null);
+  const [signedUpUser, setSignedUpUser] = useState<User | null>(null);
 
   async function handleSubmit() {
     if (mode === "login") {
@@ -44,8 +45,13 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
     }
 
     if (mode === "create" && step === 2) {
+      if (!signedUpUser) {
+        console.error("[TSW] No signed-up user available for profile insert");
+        return;
+      }
+      const confirmedUser: User = signedUpUser;
       const { error } = await supabase.from("profiles").insert([{
-        id: signedUpUser.id,
+        id: confirmedUser.id,
         name,
         birthday,
         sobriety_date: sobrietyDate,
@@ -53,7 +59,7 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
       if (error) {
         console.error("[TSW] Profile insert error:", error.message);
       } else {
-        setUser(signedUpUser);
+        setUser(confirmedUser);
         onBack();
       }
     }
