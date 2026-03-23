@@ -37,6 +37,8 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
         console.error("[TSW] Signup error:", error.message);
+      } else if (!data.user) {
+        console.error("[TSW] Signup returned no user — check email confirmation settings");
       } else {
         setSignedUpUser(data.user);
         setStep(2);
