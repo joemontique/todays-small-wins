@@ -66,11 +66,16 @@ export default function App() {
   const dayKey = getDayKey();
   console.log("[TSW] current dayKey:", dayKey);
   useEffect(() => {
+    if (!user?.id) {
+      setEvents([]);
+      return;
+    }
+
     async function fetchEvents() {
       const { data, error } = await supabase
         .from("events")
         .select("*")
-        .eq("user_id", user?.id)
+        .eq("user_id", user.id)
         .eq("day_key", dayKey)
         .order("created_at", { ascending: true });
 
@@ -82,7 +87,7 @@ export default function App() {
     }
 
     fetchEvents();
-  }, [dayKey]);
+  }, [user, dayKey]);
   const wins = useMemo(() => calculateWins(events, dayKey), [events, dayKey]);
 
   async function logEvent(
