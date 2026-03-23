@@ -58,7 +58,7 @@ export default function App() {
       const { data, error } = await supabase
         .from("events")
         .select("*")
-        // .eq("day_key", dayKey)
+        .gte("day_key", dayKey)
         .order("created_at", { ascending: true });
 
       if (error) {
