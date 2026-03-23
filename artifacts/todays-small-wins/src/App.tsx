@@ -43,6 +43,23 @@ export default function App() {
     });
   }, []);
   useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+  }, []);
+
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+  useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     try { localStorage.setItem("tsw-theme", theme); } catch {}
   }, [theme]);
@@ -58,7 +75,8 @@ export default function App() {
       const { data, error } = await supabase
         .from("events")
         .select("*")
-        .gte("day_key", dayKey)
+        .eq("user_id", user?.id)
+        .eq("day_key", dayKey)
         .order("created_at", { ascending: true });
 
       if (error) {
@@ -134,7 +152,7 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto pt-[72px] pb-[72px]">
         {currentScreen === "login" && (
-          <LoginScreen onBack={goBack} />
+      <LoginScreen onBack={goBack} setUser={setUser} />
         )}
         {currentScreen === "log" && (
           <LogScreen events={events} dayKey={dayKey} logEvent={logEvent} />

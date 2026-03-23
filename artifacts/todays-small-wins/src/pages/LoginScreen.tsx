@@ -1,15 +1,45 @@
+import { supabase } from "../lib/supabaseClient";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 interface LoginScreenProps {
   onBack: () => void;
+  setUser: any;
 }
 
-export default function LoginScreen({ onBack }: LoginScreenProps) {
+export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
   const [name, setName] = useState("");
   const [birthday, setBirthday] = useState("");
   const [sobrietyDate, setSobrietyDate] = useState("");
   const [mode, setMode] = useState<"login" | "create">("login");
+
+  async function handleAuth() {
+    if (mode === "login") {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: name,
+        password: birthday,
+      });
+
+      if (error) {
+        console.error("Login error:", error.message);
+      } else {
+        setUser(data.user);
+        onBack();
+      }
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email: name,
+        password: birthday,
+      });
+
+      if (error) {
+        console.error("Signup error:", error.message);
+      } else {
+        setUser(data.user);
+        onBack();
+      }
+    }
+  }
 
   return (
     <div className="min-h-[calc(100vh-72px)] flex flex-col p-6" data-testid="login-screen">
@@ -81,6 +111,7 @@ export default function LoginScreen({ onBack }: LoginScreenProps) {
 
         <div className="mt-8 space-y-3">
           <button
+            onClick={handleAuth}
             className="w-full bg-primary text-primary-foreground font-semibold rounded-2xl py-3.5 text-sm hover:opacity-90 active:scale-[0.98] transition-all"
             data-testid="button-submit-login"
           >

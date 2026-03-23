@@ -1,0 +1,82 @@
+Fix and complete the login system without breaking existing app functionality.
+
+GOAL:
+Implement a full authentication flow using Supabase with the following behavior:
+
+1. NAVIGATION
+- When user clicks "Log In" from header, navigate to LoginScreen
+- After successful login or signup, return to main app (log screen)
+
+2. AUTH SYSTEM
+- Use Supabase auth with email + password only
+- Remove use of "name" as login field (must be email)
+- Add proper email + password inputs
+
+3. LOGIN FLOW
+- User enters email + password
+- Use supabase.auth.signInWithPassword
+- On success:
+  - setUser(data.user)
+  - return to main app
+
+4. SIGNUP FLOW (IMPORTANT)
+- Step 1: User creates account with:
+  - email
+  - password
+- Step 2: AFTER successful signup, collect:
+  - name
+  - birthday
+  - sobriety_date
+
+5. DATABASE STORAGE
+- Create or use a "profiles" table:
+  id (uuid, primary key, references auth.users.id)
+  name (text)
+  birthday (date)
+  sobriety_date (date)
+  created_at (timestamp)
+
+- After signup, insert into profiles:
+  supabase.from("profiles").insert({
+    id: user.id,
+    name,
+    birthday,
+    sobriety_date
+  })
+
+6. STATE MANAGEMENT
+- Keep existing setUser logic
+- Do NOT break existing event system
+- Do NOT remove guest mode yet
+
+7. UI REQUIREMENTS
+- Login screen should have:
+  - email input
+  - password input
+  - toggle between login / create account
+- When in "create account" mode:
+  - show additional fields:
+    name
+    birthday
+    sobriety date
+
+8. CLEANUP RULES
+- Remove duplicate buttons or nested buttons
+- Ensure only ONE submit button exists
+- Ensure handleAuth is connected to button
+
+9. IMPORTANT CONSTRAINTS
+- Do NOT refactor unrelated files
+- Do NOT change existing event fetching logic
+- Keep changes minimal and focused
+- Do NOT introduce new libraries
+
+10. ERROR HANDLING
+- Log errors to console only (no UI needed yet)
+
+OUTPUT:
+- Updated LoginScreen.tsx
+- Any required small changes in App.tsx (if needed for navigation only)
+- Supabase insert logic for profiles
+
+Do not over-engineer. Keep it simple and working.

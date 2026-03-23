@@ -1,0 +1,119 @@
+Execute Task #3 – Complete Login & Signup Auth Flow exactly as specified below.
+
+STRICT RULES:
+- Do NOT modify unrelated files
+- Do NOT refactor existing logic outside this task
+- Keep changes minimal and targeted
+- Do NOT introduce new libraries
+- Do NOT break existing event system or navigation
+
+---------------------------------------
+
+1) LOGINSCREEN.TSX — FULL FIX
+
+Fix input wiring and implement a 2-step signup flow.
+
+A. INPUT STRUCTURE
+- Replace current incorrect inputs
+- Login mode:
+  - email input
+  - password input
+
+- Signup mode:
+  STEP 1:
+    - email
+    - password
+  STEP 2 (after successful signup):
+    - name
+    - birthday
+    - sobriety_date
+
+B. STATE
+Add:
+- const [step, setStep] = useState<1 | 2>(1)
+
+C. LOGIN LOGIC
+- Use:
+  supabase.auth.signInWithPassword({
+    email,
+    password
+  })
+
+- On success:
+  setUser(data.user)
+  onBack()
+
+D. SIGNUP LOGIC (2 STEP)
+
+STEP 1:
+- Call:
+  supabase.auth.signUp({
+    email,
+    password
+  })
+
+- On success:
+  setStep(2)
+  DO NOT navigate yet
+
+STEP 2:
+- Insert profile:
+  supabase.from("profiles").insert({
+    id: user.id,
+    name,
+    birthday,
+    sobriety_date
+  })
+
+- Then:
+  setUser(user)
+  onBack()
+
+E. BUTTON RULE
+- Only ONE submit button visible at a time
+- Button changes behavior based on:
+  mode + step
+
+---------------------------------------
+
+2) APP.TSX — CLEANUP ONLY
+
+- Remove duplicate useEffect that calls:
+  supabase.auth.getUser()
+
+- Keep ONLY the onAuthStateChange listener
+
+- Fix indentation of:
+  <LoginScreen ... />
+
+NO OTHER CHANGES
+
+---------------------------------------
+
+3) DATABASE ASSUMPTION
+
+Use existing "profiles" table with:
+- id (uuid, matches auth.users.id)
+- name (text)
+- birthday (date)
+- sobriety_date (date)
+- created_at (timestamp)
+
+---------------------------------------
+
+4) ERROR HANDLING
+
+- console.error only
+- No UI error messages
+
+---------------------------------------
+
+OUTPUT REQUIRED:
+
+- Updated LoginScreen.tsx (full file)
+- Minimal App.tsx cleanup
+
+---------------------------------------
+
+DO NOT OVER-ENGINEER.
+MAKE IT WORK CLEANLY.
