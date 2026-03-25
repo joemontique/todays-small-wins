@@ -1,0 +1,175 @@
+Enhance the app with user personalization, strict guest mode behavior, and a medications system. Do NOT refactor unrelated code. Make minimal, controlled changes.
+
+----------------------------------------
+
+PART 1 — STRICT GUEST MODE (IMPORTANT)
+
+In App.tsx:
+
+1. Modify logEvent:
+- If no user.id:
+  - DO NOT call Supabase insert
+  - Only update local state (setEvents)
+  - Add console warning "[TSW] Guest mode — not saving"
+
+2. Ensure:
+- When user logs in → setEvents([]) (clear guest data)
+- When user logs out → setEvents([])
+
+Result:
+Guest data is NEVER saved and NEVER persists.
+
+----------------------------------------
+
+PART 2 — PROFILE + SOBRIETY HEADER
+
+In App.tsx:
+
+1. Add:
+   const [profile, setProfile] = useState<any>(null);
+
+2. Add useEffect on [user]:
+   - If user exists:
+     fetch from profiles where id = user.id
+     setProfile(data)
+   - Else:
+     setProfile(null)
+
+3. Add helper:
+function getSobrietyDays(dateString) {
+  if (!dateString) return null;
+  const start = new Date(dateString);
+  const today = new Date();
+  return Math.floor((today - start) / (1000 * 60 * 60 * 24));
+}
+
+----------------------------------------
+
+PART 3 — HEADER UPDATE
+
+Update Header component:
+
+IF user exists:
+  Show:
+    "Hey {profile.name}"
+    "🔥 {sobrietyDays} days sober"
+
+ELSE:
+  Show existing title
+
+Replace login button logic:
+
+IF user exists:
+  Show Logout button
+ELSE:
+  Show Log In button
+
+----------------------------------------
+
+PART 4 — LOGOUT
+
+In App.tsx:
+
+Add:
+
+async function handleLogout() {
+  await supabase.auth.signOut();
+  setUser(null);
+  setProfile(null);
+  setEvents([]);
+}
+
+Pass to Header.
+
+----------------------------------------
+
+PART 5 — MEDICATIONS SYSTEM
+
+Create new table usage:
+
+medications:
+- id (uuid)
+- user_id
+- name (text)
+- time (text)
+- created_at
+
+----------------------------------------
+
+PART 6 — FETCH MEDICATIONS
+
+In App.tsx:
+
+Add:
+const [medications, setMedications] = useState([]);
+
+Add useEffect on [user]:
+- If user:
+  fetch medications where user_id = user.id
+  setMedications(data)
+- Else:
+  setMedications([])
+
+----------------------------------------
+
+PART 7 — CREATE MEDICATIONS (SIGNUP FLOW)
+
+In LoginScreen.tsx:
+
+After profile creation (step 2):
+
+Ask user:
+"Do you take medications?" (yes/no)
+
+If yes:
+- Allow adding:
+  - medication name
+  - time
+
+Store in medications table with user_id
+
+----------------------------------------
+
+PART 8 — MEDICATION CRUD UI
+
+Create simple UI section (can be below header or in log screen):
+
+Display medications list:
+- name
+- time
+
+Each item has:
+- Edit button
+- Delete button
+
+Actions:
+- Update → supabase update where id
+- Delete → supabase delete where id
+
+----------------------------------------
+
+PART 9 — RULES
+
+- Do NOT modify event schema
+- Do NOT break login flow
+- Do NOT add new libraries
+- Keep UI minimal and consistent
+- Ensure all data is user-specific (user_id)
+
+----------------------------------------
+
+EXPECTED RESULT:
+
+Guest:
+- Can interact
+- Nothing saved
+
+User:
+- Sees name + sobriety
+- Sees own medications
+- Can add/edit/delete medications
+- Data persists
+
+----------------------------------------
+
+Implement exactly as described.
