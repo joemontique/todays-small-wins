@@ -5,6 +5,7 @@ import {
   createEvent,
   calculateWins,
   getDayKey,
+  getMedicationDayKey,
   type AppMode,
   type WellnessEvent,
   type EventType,
@@ -91,11 +92,17 @@ export default function App() {
     }
 
     async function fetchEvents() {
+      const medDayKey = getMedicationDayKey();
+      // Include both the 3AM-reset wellness day key and the midnight-reset
+      // medication day key so that medication events logged between midnight
+      // and 3 AM are always fetched and "taken" state renders correctly.
+      const dayKeys = [...new Set([dayKey, medDayKey])];
+
       const { data, error } = await supabase
         .from("events")
         .select("*")
         .eq("user_id", user.id)
-        .eq("day_key", dayKey)
+        .in("day_key", dayKeys)
         .order("created_at", { ascending: true });
 
       if (error) {
