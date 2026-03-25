@@ -94,15 +94,38 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 
 ### `artifacts/todays-small-wins` (`@workspace/todays-small-wins`)
 
-Mobile-first wellness tracker React (Vite + Tailwind) app. Frontend only — all state is local React state (no backend, no auth yet). Structured for future database integration.
+Mobile-first wellness tracker React (Vite + Tailwind) app with Supabase auth and data persistence.
 
 - Entry: `src/main.tsx` → `src/App.tsx`
-- State: All events and navigation state centralized in `App.tsx`
-- Event system: `src/lib/eventSystem.ts` — event type, win calculation, `getTodayKey()`, `createEvent()`, `DEBUG` flag
+- State: All events, profile, medications, and navigation state centralized in `App.tsx`
+- Auth: Supabase email/password (login + 3-step signup: credentials → profile → medications)
+- Event system: `src/lib/eventSystem.ts` — event types, win calculation, `getDayKey()` (3 AM reset), `getMedicationDayKey()` (midnight reset), `createEvent()`, `DEBUG` flag
+- Time utils: `src/lib/timeUtils.ts` — `getDayKey`, `getMedicationDayKey`, `nowHHMM`, `isAfter7PM`
 - Components: `Header`, `BottomNav`, `LogScreen`, `WinAnimation`, `DebugPanel`
-- Pages: `LoginScreen` (UI only), `ResultsScreen`, `ProgressScreen`, `CalendarScreen` (placeholders)
+- Pages: `LoginScreen` (full auth flow), `ResultsScreen`, `ProgressScreen`, `CalendarScreen` (placeholders)
+- Supabase tables used: `events`, `profiles`, `medications`
+- **medications table** must be created manually in Supabase dashboard (see SQL below)
+- Guest mode: events update local state only — nothing sent to Supabase; events clear on login/logout
+- Authenticated mode: header shows "Hey {name}" + sobriety badge; medications are user-specific and fetched on login
 - Autumn warm palette defined in `src/index.css`
-- `DEBUG = true` — logs event creation and win recalculation to console; includes a toggleable debug panel
+- `DEBUG = true` — logs event creation and win recalculation; includes a toggleable debug panel
+
+#### Supabase `medications` table SQL
+
+```sql
+CREATE TABLE medications (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL,
+  name TEXT NOT NULL,
+  time TEXT NOT NULL DEFAULT '08:00',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE medications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "select_own" ON medications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "insert_own" ON medications FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "update_own" ON medications FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "delete_own" ON medications FOR DELETE USING (auth.uid() = user_id);
+```
 
 ### `scripts` (`@workspace/scripts`)
 

@@ -28,6 +28,22 @@ function getInitialTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
+function getSobrietyDays(dateString: string | null | undefined): number | null {
+  if (!dateString) return null;
+  const start = new Date(dateString);
+  const today = new Date();
+  const diff = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diff >= 0 ? diff : null;
+}
+
+export interface Medication {
+  id: string;
+  user_id: string;
+  name: string;
+  time: string;
+  created_at: string;
+}
+
 export default function App() {
   const [events, setEvents] = useState<WellnessEvent[]>([]);
   const [currentScreen, setCurrentScreen] = useState<Screen>("log");
@@ -35,8 +51,10 @@ export default function App() {
   const [showDebug, setShowDebug] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [medications, setMedications] = useState<Medication[]>([]);
 
-  const mode: AppMode = user ? "authenticated" : "guest";
+  const mode: AppMode = user ? "user" : "guest";
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -50,7 +68,6 @@ export default function App() {
         setUser(session?.user ?? null);
       }
     );
-
     return () => {
       listener.subscription.unsubscribe();
     };
@@ -66,7 +83,6 @@ export default function App() {
   }
 
   const dayKey = getDayKey();
-  console.log("[TSW] current dayKey:", dayKey);
 
   useEffect(() => {
     if (!user?.id) {
@@ -83,7 +99,7 @@ export default function App() {
         .order("created_at", { ascending: true });
 
       if (error) {
-        console.error("[TSW] Fetch error:", error);
+        console.error("[TSW] Fetch events error:", error);
       } else {
         setEvents(data || []);
       }
@@ -92,7 +108,54 @@ export default function App() {
     fetchEvents();
   }, [user, dayKey]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setProfile(null);
+      return;
+    }
+
+    async function fetchProfile() {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("[TSW] Fetch profile error:", error);
+      } else {
+        setProfile(data);
+      }
+    }
+
+    fetchProfile();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setMedications([]);
+      return;
+    }
+
+    async function fetchMedications() {
+      const { data, error } = await supabase
+        .from("medications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("[TSW] Fetch medications error:", error);
+      } else {
+        setMedications(data || []);
+      }
+    }
+
+    fetchMedications();
+  }, [user]);
+
   const wins = useMemo(() => calculateWins(events, dayKey), [events, dayKey]);
+  const sobrietyDays = getSobrietyDays(profile?.sobriety_date);
 
   async function logEvent(
     type: EventType,
@@ -106,19 +169,23 @@ export default function App() {
     const newWins = calculateWins(newEvents, dayKey);
 
     setEvents(newEvents);
-
     const earnedWin = newWins > prevWins;
     setWinAnim({ text: earnedWin ? "+1 Win" : "Nice job" });
+
+    if (!user?.id) {
+      console.warn("[TSW] Guest mode — not saving");
+      return;
+    }
 
     try {
       const { error } = await supabase.from("events").insert([
         {
-          user_id: user?.id || null,
+          user_id: user.id,
           type,
           value: String(value),
           day_key: dayKeyOverride || dayKey,
           metadata,
-        }
+        },
       ]);
 
       if (error) {
@@ -128,6 +195,45 @@ export default function App() {
       }
     } catch (err) {
       console.error("[TSW] Unexpected Supabase error:", err);
+    }
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
+    setMedications([]);
+    setEvents([]);
+  }
+
+  function handleLoginSuccess(loggedInUser: any) {
+    setEvents([]);
+    setUser(loggedInUser);
+  }
+
+  async function handleUpdateMedication(id: string, name: string, time: string) {
+    const { error } = await supabase
+      .from("medications")
+      .update({ name, time })
+      .eq("id", id);
+
+    if (error) {
+      console.error("[TSW] Medication update error:", error);
+    } else {
+      setMedications(prev => prev.map(m => m.id === id ? { ...m, name, time } : m));
+    }
+  }
+
+  async function handleDeleteMedication(id: string) {
+    const { error } = await supabase
+      .from("medications")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("[TSW] Medication delete error:", error);
+    } else {
+      setMedications(prev => prev.filter(m => m.id !== id));
     }
   }
 
@@ -148,7 +254,11 @@ export default function App() {
     >
       <Header
         wins={wins}
+        user={user}
+        profile={profile}
+        sobrietyDays={sobrietyDays}
         onLoginClick={goToLogin}
+        onLogout={handleLogout}
         showLoginButton={!isLogin}
         theme={theme}
         onThemeToggle={toggleTheme}
@@ -156,10 +266,18 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto pt-[72px] pb-[72px]">
         {currentScreen === "login" && (
-          <LoginScreen onBack={goBack} setUser={setUser} />
+          <LoginScreen onBack={goBack} setUser={handleLoginSuccess} />
         )}
         {currentScreen === "log" && (
-          <LogScreen events={events} dayKey={dayKey} logEvent={logEvent} />
+          <LogScreen
+            events={events}
+            dayKey={dayKey}
+            logEvent={logEvent}
+            user={user}
+            medications={medications}
+            onUpdateMedication={handleUpdateMedication}
+            onDeleteMedication={handleDeleteMedication}
+          />
         )}
         {currentScreen === "results" && <ResultsScreen />}
         {currentScreen === "progress" && <ProgressScreen />}

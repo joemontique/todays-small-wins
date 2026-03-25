@@ -2,6 +2,16 @@ import { useState } from "react";
 import { getMedicationDayKey, type WellnessEvent, type EventType } from "@/lib/eventSystem";
 import { nowHHMM, isAfter7PM } from "@/lib/timeUtils";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Medication {
+  id: string;
+  user_id: string;
+  name: string;
+  time: string;
+  created_at: string;
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MOOD_OPTIONS = [
@@ -43,13 +53,6 @@ const BATHROOM_TYPES = [
   { value: "❌", label: "Nothing", wins: false },
 ];
 
-// Simulated medication list — future: synced from user profile
-const DEMO_MEDICATIONS = [
-  { name: "Vitamin D", scheduled_time: "08:00" },
-  { name: "Omega-3", scheduled_time: "08:00" },
-  { name: "Magnesium", scheduled_time: "21:00" },
-];
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getOpenBedtimeEvent(events: WellnessEvent[]): WellnessEvent | null {
@@ -77,11 +80,23 @@ interface LogScreenProps {
   events: WellnessEvent[];
   dayKey: string;
   logEvent: (type: EventType, value: string | number, metadata?: Record<string, unknown>, dayKeyOverride?: string) => void;
+  user: any;
+  medications: Medication[];
+  onUpdateMedication: (id: string, name: string, time: string) => Promise<void>;
+  onDeleteMedication: (id: string) => Promise<void>;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) {
+export default function LogScreen({
+  events,
+  dayKey,
+  logEvent,
+  user,
+  medications,
+  onUpdateMedication,
+  onDeleteMedication,
+}: LogScreenProps) {
   // Mood
   const [moodOpen, setMoodOpen] = useState(false);
 
@@ -98,6 +113,11 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
   const [duration, setDuration] = useState("");
   const [bathroomNotes, setBathroomNotes] = useState("");
 
+  // Medication edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editTime, setEditTime] = useState("");
+
   // ── Derived state ──────────────────────────────────────────────────────────
   const todayEvents = events.filter(e => e.day_key === dayKey);
   const hydrationCups = todayEvents
@@ -111,15 +131,15 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
   const sleepDoneToday = isSleepCompletedToday(events, dayKey);
   const after7PM = isAfter7PM();
 
-  // Medication uses midnight-based day key (independent of 3 AM reset)
+  // Medication: use midnight-based day key. Derive taken set from events.
   const medDayKey = getMedicationDayKey();
   const takenMedNames = new Set(
     events
       .filter(e => e.type === "medication" && e.day_key === medDayKey)
       .map(e => e.metadata?.name as string)
   );
-  const availableMeds = DEMO_MEDICATIONS.filter(m => !takenMedNames.has(m.name));
-  const takenMeds = DEMO_MEDICATIONS.filter(m => takenMedNames.has(m.name));
+  const availableMeds = user ? medications.filter(m => !takenMedNames.has(m.name)) : [];
+  const takenMeds = user ? medications.filter(m => takenMedNames.has(m.name)) : [];
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -155,16 +175,15 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
     setWakeMood("");
   }
 
-  async function handleLogNap(hours: number) {
+  function handleLogNap(hours: number) {
     logEvent("nap", hours, { duration_hours: hours });
   }
 
-  function handleLogMedication(name: string, scheduledTime: string) {
-    // Medication events always use the midnight-based day key (independent of 3 AM wellness reset)
+  function handleLogMedication(medName: string, time: string) {
     logEvent("medication", 1, {
-      name,
-      scheduled_time: scheduledTime,
-      source: "simulated",
+      name: medName,
+      time,
+      source: "user",
     }, getMedicationDayKey());
   }
 
@@ -179,6 +198,18 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
     setDuration("");
     setBathroomNotes("");
     setBathroomOpen(false);
+  }
+
+  function startEdit(med: Medication) {
+    setEditingId(med.id);
+    setEditName(med.name);
+    setEditTime(med.time);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingId) return;
+    await onUpdateMedication(editingId, editName.trim(), editTime);
+    setEditingId(null);
   }
 
   // ── Date label ─────────────────────────────────────────────────────────────
@@ -225,7 +256,6 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
 
         {sleepOpen && !sleepDoneToday && (
           <div className="mt-3 space-y-3">
-            {/* Stage 1: Log bedtime */}
             {!openBedtime && (
               <>
                 <div className="space-y-1">
@@ -251,7 +281,6 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
               </>
             )}
 
-            {/* Stage 2: Complete sleep log */}
             {openBedtime && (
               <>
                 <div className="text-xs text-muted-foreground bg-muted/50 rounded-xl px-3 py-2">
@@ -259,9 +288,7 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Fell asleep
-                    </label>
+                    <label className="text-xs font-medium text-muted-foreground">Fell asleep</label>
                     <input
                       type="time"
                       value={fellAsleepTime}
@@ -271,9 +298,7 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Woke up
-                    </label>
+                    <label className="text-xs font-medium text-muted-foreground">Woke up</label>
                     <input
                       type="time"
                       value={wokeUpTime}
@@ -284,9 +309,7 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Wake mood
-                  </label>
+                  <label className="text-xs font-medium text-muted-foreground">Wake mood</label>
                   <div className="flex gap-2">
                     {WAKE_MOOD_OPTIONS.map(({ emoji, label }) => (
                       <button
@@ -428,49 +451,129 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
           <div>
             <p className="font-semibold text-foreground text-sm">Medication</p>
             <p className="text-xs text-muted-foreground">
-              {takenMedNames.size > 0
-                ? `${takenMedNames.size} of ${DEMO_MEDICATIONS.length} taken`
-                : "None taken today"}
+              {user
+                ? medications.length > 0
+                  ? `${takenMedNames.size} of ${medications.length} taken today`
+                  : "No medications set up"
+                : "Sign in to track"}
             </p>
           </div>
         </div>
 
-        {availableMeds.length > 0 ? (
-          <div className="space-y-2">
-            {availableMeds.map(med => (
-              <button
-                key={med.name}
-                onClick={() => handleLogMedication(med.name, med.scheduled_time)}
-                className="w-full flex items-center justify-between px-3 py-2.5 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 rounded-xl transition-all active:scale-95 text-left"
-                data-testid={`button-med-${med.name.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                <span className="text-sm font-medium text-primary">{med.name}</span>
-                <span className="text-xs text-muted-foreground">{med.scheduled_time}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-1">
-            All medications taken ✓
+        {/* Guest: prompt to sign in */}
+        {!user && (
+          <p className="text-xs text-muted-foreground text-center py-2">
+            Sign in to start tracking your medications
           </p>
         )}
 
-        {takenMeds.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {takenMeds.map(med => (
-              <span
-                key={med.name}
-                className="text-[11px] bg-muted text-muted-foreground line-through rounded-full px-2 py-0.5"
-              >
-                {med.name}
-              </span>
+        {/* Authenticated: daily action buttons */}
+        {user && medications.length > 0 && (
+          <>
+            {availableMeds.length > 0 ? (
+              <div className="space-y-2">
+                {availableMeds.map(med => (
+                  <button
+                    key={med.id}
+                    onClick={() => handleLogMedication(med.name, med.time)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 bg-primary/10 hover:bg-primary/20 active:bg-primary/30 rounded-xl transition-all active:scale-95 text-left"
+                    data-testid={`button-med-${med.name.toLowerCase().replace(/\s+/g, "-")}`}
+                  >
+                    <span className="text-sm font-medium text-primary">Take {med.name}</span>
+                    <span className="text-xs text-muted-foreground">{med.time}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-1">
+                All medications taken today ✓
+              </p>
+            )}
+
+            {takenMeds.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {takenMeds.map(med => (
+                  <span
+                    key={med.id}
+                    className="text-[11px] bg-muted text-muted-foreground line-through rounded-full px-2 py-0.5"
+                  >
+                    {med.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Authenticated: CRUD management */}
+        {user && (
+          <div className={medications.length > 0 ? "mt-3 pt-3 border-t border-border/40 space-y-2" : "space-y-2"}>
+            {medications.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-1">
+                No medications added — set them up during signup or ask your provider.
+              </p>
+            )}
+            {medications.map(med => (
+              <div key={med.id} className="rounded-xl bg-muted/30 px-3 py-2">
+                {editingId === med.id ? (
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      className="flex-1 bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      data-testid={`input-edit-med-name-${med.id}`}
+                    />
+                    <input
+                      type="time"
+                      value={editTime}
+                      onChange={e => setEditTime(e.target.value)}
+                      className="w-24 bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      data-testid={`input-edit-med-time-${med.id}`}
+                    />
+                    <button
+                      onClick={handleSaveEdit}
+                      className="text-xs font-semibold text-primary hover:underline"
+                      data-testid={`button-save-med-${med.id}`}
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      data-testid={`button-cancel-edit-med-${med.id}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">
+                      {med.name}
+                      <span className="text-muted-foreground text-xs ml-2">{med.time}</span>
+                    </span>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => startEdit(med)}
+                        className="text-xs text-primary hover:underline"
+                        data-testid={`button-edit-med-${med.id}`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => onDeleteMedication(med.id)}
+                        className="text-xs text-red-500 hover:underline"
+                        data-testid={`button-delete-med-${med.id}`}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
-
-        <p className="text-[10px] text-muted-foreground/50 mt-2">
-          Future: synced from your profile · Resets at midnight
-        </p>
       </div>
 
       {/* ── BATHROOM ──────────────────────────────────────────────────────── */}
@@ -503,7 +606,6 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
 
         {bathroomOpen && (
           <div className="mt-3 space-y-3">
-            {/* Step 1: Type */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">What happened?</label>
               <div className="grid grid-cols-3 gap-2">
@@ -533,7 +635,6 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
               </div>
             </div>
 
-            {/* Step 2: Duration */}
             {bathroomType && (
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Duration</label>
@@ -557,7 +658,6 @@ export default function LogScreen({ events, dayKey, logEvent }: LogScreenProps) 
               </div>
             )}
 
-            {/* Step 3: Notes */}
             {bathroomType && (
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">
