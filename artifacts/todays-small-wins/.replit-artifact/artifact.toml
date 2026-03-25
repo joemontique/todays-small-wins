@@ -19,12 +19,7 @@ run = "pnpm --filter @workspace/todays-small-wins run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/todays-small-wins", "run", "build" ]
-publicDir = "artifacts/todays-small-wins/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+run = [ "pnpm", "--filter", "@workspace/todays-small-wins", "run", "start" ]
 
 [services.env]
 PORT = "24359"
