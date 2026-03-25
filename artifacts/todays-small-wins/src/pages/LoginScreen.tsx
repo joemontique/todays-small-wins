@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 interface LoginScreenProps {
   onBack: () => void;
-  setUser: any;
+  setUser: (user: User) => void;
 }
 
 export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
@@ -25,6 +25,7 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
     if (mode === "login") {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
+        alert(error.message);
         console.error("[TSW] Login error:", error.message);
       } else {
         setUser(data.user);
@@ -36,9 +37,11 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
     if (mode === "create" && step === 1) {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
+        alert(error.message);
         console.error("[TSW] Signup error:", error.message);
       } else if (!data.user) {
-        console.error("[TSW] Signup returned no user — check email confirmation settings");
+        alert("Signup returned no user — check email confirmation settings");
+        console.error("[TSW] Signup returned no user");
       } else {
         setSignedUpUser(data.user);
         setStep(2);
@@ -48,6 +51,7 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
 
     if (mode === "create" && step === 2) {
       if (!signedUpUser) {
+        alert("No signed-up user available");
         console.error("[TSW] No signed-up user available for profile insert");
         return;
       }
@@ -59,6 +63,7 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
         sobriety_date: sobrietyDate,
       }]);
       if (error) {
+        alert(error.message);
         console.error("[TSW] Profile insert error:", error.message);
       } else {
         setUser(confirmedUser);
@@ -68,7 +73,7 @@ export default function LoginScreen({ onBack, setUser }: LoginScreenProps) {
   }
 
   function switchMode() {
-    setMode(m => m === "login" ? "create" : "login");
+    setMode(m => (m === "login" ? "create" : "login"));
     setStep(1);
     setEmail("");
     setPassword("");
