@@ -237,6 +237,22 @@ export default function App() {
     }
   }
 
+  async function handleAddMedication(name: string, time: string) {
+    if (!user?.id || !name.trim()) return;
+
+    const { data, error } = await supabase
+      .from("medications")
+      .insert([{ user_id: user.id, name: name.trim(), time: time || "08:00" }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[TSW] Medication add error:", error);
+    } else if (data) {
+      setMedications(prev => [...prev, data as Medication]);
+    }
+  }
+
   function goToLogin() {
     setCurrentScreen("login");
   }
@@ -275,6 +291,7 @@ export default function App() {
             logEvent={logEvent}
             user={user}
             medications={medications}
+            onAddMedication={handleAddMedication}
             onUpdateMedication={handleUpdateMedication}
             onDeleteMedication={handleDeleteMedication}
           />

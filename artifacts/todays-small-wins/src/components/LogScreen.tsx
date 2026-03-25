@@ -82,6 +82,7 @@ interface LogScreenProps {
   logEvent: (type: EventType, value: string | number, metadata?: Record<string, unknown>, dayKeyOverride?: string) => void;
   user: any;
   medications: Medication[];
+  onAddMedication: (name: string, time: string) => Promise<void>;
   onUpdateMedication: (id: string, name: string, time: string) => Promise<void>;
   onDeleteMedication: (id: string) => Promise<void>;
 }
@@ -94,6 +95,7 @@ export default function LogScreen({
   logEvent,
   user,
   medications,
+  onAddMedication,
   onUpdateMedication,
   onDeleteMedication,
 }: LogScreenProps) {
@@ -117,6 +119,11 @@ export default function LogScreen({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editTime, setEditTime] = useState("");
+
+  // Medication add state
+  const [addingMed, setAddingMed] = useState(false);
+  const [newMedName, setNewMedName] = useState("");
+  const [newMedTime, setNewMedTime] = useState("08:00");
 
   // ── Derived state ──────────────────────────────────────────────────────────
   const todayEvents = events.filter(e => e.day_key === dayKey);
@@ -508,9 +515,9 @@ export default function LogScreen({
         {/* Authenticated: CRUD management */}
         {user && (
           <div className={medications.length > 0 ? "mt-3 pt-3 border-t border-border/40 space-y-2" : "space-y-2"}>
-            {medications.length === 0 && (
+            {medications.length === 0 && !addingMed && (
               <p className="text-xs text-muted-foreground text-center py-1">
-                No medications added — set them up during signup or ask your provider.
+                No medications added yet.
               </p>
             )}
             {medications.map(med => (
@@ -572,6 +579,68 @@ export default function LogScreen({
                 )}
               </div>
             ))}
+
+            {/* Add medication inline form */}
+            {addingMed ? (
+              <div className="rounded-xl bg-muted/30 px-3 py-2 space-y-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    placeholder="Medication name"
+                    value={newMedName}
+                    onChange={e => setNewMedName(e.target.value)}
+                    autoFocus
+                    className="flex-1 bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    data-testid="input-new-med-name"
+                  />
+                  <input
+                    type="time"
+                    value={newMedTime}
+                    onChange={e => setNewMedTime(e.target.value)}
+                    className="w-24 bg-background border border-border rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    data-testid="input-new-med-time"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => {
+                      setAddingMed(false);
+                      setNewMedName("");
+                      setNewMedTime("08:00");
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    data-testid="button-cancel-add-med"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!newMedName.trim()) return;
+                      await onAddMedication(newMedName, newMedTime);
+                      setAddingMed(false);
+                      setNewMedName("");
+                      setNewMedTime("08:00");
+                    }}
+                    className="text-xs font-semibold text-primary hover:underline disabled:opacity-40"
+                    disabled={!newMedName.trim()}
+                    data-testid="button-save-add-med"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setAddingMed(true);
+                  setEditingId(null);
+                }}
+                className="w-full text-xs text-primary font-medium rounded-xl border border-dashed border-primary/30 py-2 hover:bg-primary/5 active:scale-98 transition-all"
+                data-testid="button-add-med"
+              >
+                + Add medication
+              </button>
+            )}
           </div>
         )}
       </div>
