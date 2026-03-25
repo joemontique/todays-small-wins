@@ -34,8 +34,9 @@ export default function App() {
   const [winAnim, setWinAnim] = useState<{ text: string } | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(getInitialTheme);
-  const [mode] = useState<AppMode>("guest");
   const [user, setUser] = useState<any>(null);
+
+  const mode: AppMode = user ? "authenticated" : "guest";
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -54,6 +55,7 @@ export default function App() {
       listener.subscription.unsubscribe();
     };
   }, []);
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     try { localStorage.setItem("tsw-theme", theme); } catch {}
@@ -65,6 +67,7 @@ export default function App() {
 
   const dayKey = getDayKey();
   console.log("[TSW] current dayKey:", dayKey);
+
   useEffect(() => {
     if (!user?.id) {
       setEvents([]);
@@ -88,6 +91,7 @@ export default function App() {
 
     fetchEvents();
   }, [user, dayKey]);
+
   const wins = useMemo(() => calculateWins(events, dayKey), [events, dayKey]);
 
   async function logEvent(
