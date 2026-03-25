@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build",
-    "start": "npx serve -s dist -l 8080",
+    "start": "serve -s dist -l $PORT",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -28,6 +28,7 @@
     "vite": "catalog:"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.3"
+    "@supabase/supabase-js": "^2.99.3",
+    "serve": "^14.2.6"
   }
 }
