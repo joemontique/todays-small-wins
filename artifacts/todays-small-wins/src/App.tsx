@@ -305,7 +305,7 @@ export default function App() {
         )}
         {currentScreen === "results" && <ResultsScreen events={events} dayKey={dayKey} />}
         {currentScreen === "progress" && <ProgressScreen />}
-        {currentScreen === "calendar" && <CalendarScreen />}
+        {currentScreen === "calendar" && <CalendarScreen onGoToLog={() => setCurrentScreen("log")} />}
       </main>
 
       {!isLogin && (
