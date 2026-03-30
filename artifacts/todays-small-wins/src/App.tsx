@@ -303,7 +303,7 @@ export default function App() {
             onDeleteMedication={handleDeleteMedication}
           />
         )}
-        {currentScreen === "results" && <ResultsScreen />}
+        {currentScreen === "results" && <ResultsScreen events={events} dayKey={dayKey} />}
         {currentScreen === "progress" && <ProgressScreen />}
         {currentScreen === "calendar" && <CalendarScreen />}
       </main>
